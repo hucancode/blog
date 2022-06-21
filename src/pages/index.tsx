@@ -1,56 +1,70 @@
-import Container from 'components/container'
-import MoreStories from 'components/more-stories'
-import HeroPost from 'components/hero-post'
-import Intro from 'components/intro'
-import Layout from 'components/layout'
-import { getAllPosts } from 'lib/api'
-import Head from 'next/head'
-import Post from 'types/post'
+import { useTheme } from "@nextui-org/react";
 
-type Props = {
-  allPosts: Post[]
+import AuthorSection from "../components/AuthorSection";
+import MainHeader from "../components/Header/MainHeader";
+import PostCard from "../components/PostCard";
+import SEO from "../components/SEO";
+import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import useScrollRestoration from "../hooks/useScrollRestoration";
+import { getAllPosts } from "../libs/api";
+import PostType from "../types/post";
+
+interface Props {
+  allPosts: PostType[];
 }
 
-const Index = ({ allPosts }: Props) => {
-  const heroPost = allPosts[0]
-  const morePosts = allPosts.slice(1)
+function Blog({ allPosts }: Props) {
+  const { theme } = useTheme();
+  useScrollRestoration();
+
+  const {
+    setTarget,
+    elements: posts,
+    isEnded,
+  } = useInfiniteScroll<PostType>({
+    fullElements: allPosts,
+    offset: 12,
+    rootMargin: "100px",
+  });
+
   return (
     <>
-      <Layout>
-        <Head>
-          <title>hucancode</title>
-        </Head>
-        <Container>
-          <Intro />
-          {heroPost && (
-            <HeroPost
-              title={heroPost.title}
-              coverImage={heroPost.coverImage}
-              date={heroPost.date}
-              slug={heroPost.slug}
-              excerpt={heroPost.excerpt}
-            />
-          )}
-          {morePosts.length > 0 && <MoreStories posts={morePosts} />}
-        </Container>
-      </Layout>
+      <SEO />
+      <MainHeader />
+      <AuthorSection />
+      <main>
+        {posts.map(({ slug, title, date, category, subtitle }) => (
+          <PostCard
+            key={slug}
+            slug={slug}
+            title={title}
+            subtitle={subtitle}
+            date={date}
+            category={category}
+            theme={theme}
+          />
+        ))}
+
+        {!isEnded && <div ref={setTarget}></div>}
+      </main>
     </>
-  )
+  );
 }
 
-export default Index
+export default Blog;
 
-export const getStaticProps = async () => {
+export async function getStaticProps() {
   const allPosts = getAllPosts([
-    'title',
-    'date',
-    'slug',
-    'author',
-    'coverImage',
-    'excerpt',
-  ])
+    "title",
+    "date",
+    "slug",
+    "category",
+    "subtitle",
+  ]);
 
   return {
-    props: { allPosts },
-  }
+    props: {
+      allPosts,
+    },
+  };
 }
