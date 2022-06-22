@@ -14,6 +14,7 @@ There are 4 operations we will be implementing here
 - List Opening Game - `Find Sessions` in UE term
 - Join Game - `Join Session` in UE term
 - Leave Game - `Destroy Session` in UE term
+- Start Game - After all player are gathered, host player can decide to start the game
 ### Before we begin
 #### Make sure you enabled online subsystem plugin
 Open `Plugin Settings`, and enable `Online Base`, `Online Subsystem`, `Online Subsystem Utils`. Then enable Steam, or something else according to your case. In this case, I just want to connect over LAN so I went with `Online Subsystem NULL`
@@ -29,6 +30,25 @@ Your setting would looks like this
 ### Create session
 
 You can check for Epic's official implementation of `CreateSession` at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\CreateSessionCallbackProxy.cpp`
+First we need to declare some `Delegate`
+```cpp
+// MyGameInstance.h
+FOnCreateSessionCompleteDelegate OnCreateSessionCompleteDelegate;
+FOnStartSessionCompleteDelegate OnStartSessionCompleteDelegate;
+FDelegateHandle OnCreateSessionCompleteDelegateHandle;
+FDelegateHandle OnStartSessionCompleteDelegateHandle;
+```
+Setup delegate in your class constructor
+```cpp
+// MyGameInstance.cpp/Init method
+OnCreateSessionCompleteDelegate =
+  FOnCreateSessionCompleteDelegate::CreateUObject(
+    this, &UMyGameInstance::OnCreateSessionComplete);
+OnStartSessionCompleteDelegate =
+  FOnStartSessionCompleteDelegate::CreateUObject(
+    this, &UMyGameInstance::OnStartSessionComplete);
+```
+The actual create method would looks like this.
 
 We need an `IOnlineSession` object to get going, usually you can get it with `Online::GetSubsystem::GetSessionInterface`. 
 In there we pass a player ID, that player would be host player, in this case I use `GetPrimaryPlayerUniqueIdRepl`. 
@@ -37,56 +57,210 @@ Customization is done via `FOnlineSessionSettings`.
 Note that those settings are pretty fragile, your game might not be found by others if not done correctly.
 The options below are confirmed working in `UE 5.0` for creating a LAN game.
 ```cpp
-FOnlineSessionSettings Settings;
-Settings.NumPublicConnections = 10;
-Settings.bShouldAdvertise = true;
-Settings.bAllowJoinInProgress = true;
-Settings.bIsLANMatch = true;
-Settings.bUsesPresence = true;
-Settings.bAllowJoinViaPresence = true;
-auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-Sessions->CreateSession(*GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, Settings);
+bool UMyGameInstance::CreateSession() {
+  FOnlineSessionSettings Settings;
+  Settings.NumPublicConnections = 10;
+  Settings.bShouldAdvertise = true;
+  Settings.bAllowJoinInProgress = true;
+  Settings.bIsLANMatch = true;
+  Settings.bUsesPresence = true;
+  Settings.bAllowJoinViaPresence = true;
+  auto Sessions = Online::GetSubsystem(GetWorld())
+    ->GetSessionInterface();
+  OnCreateSessionCompleteDelegateHandle =
+    Sessions->AddOnCreateSessionCompleteDelegate_Handle(
+      OnCreateSessionCompleteDelegate);
+  return Sessions->CreateSession(
+    *GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, Settings);
+}
+```
+```cpp
+void UMyGameInstance::OnCreateSessionComplete(
+    FName SessionName, bool bWasSuccessful) {
+  auto Sessions = Online::GetSubsystem(GetWorld())
+    ->GetSessionInterface();
+  // Clear the SessionComplete delegate handle, since we finished this call
+  Sessions->ClearOnCreateSessionCompleteDelegate_Handle(
+      OnCreateSessionCompleteDelegateHandle);
+  if (!bWasSuccessful) {
+    return;
+  }
+  // Set the StartSession delegate handle
+  OnStartSessionCompleteDelegateHandle =
+      Sessions->AddOnStartSessionCompleteDelegate_Handle(
+          OnStartSessionCompleteDelegate);
+  Sessions->StartSession(NAME_GameSession);
+}
+```
+```cpp
+void UMyGameInstance::OnStartSessionComplete(
+    FName SessionName, bool bWasSuccessful) {
+  auto Sessions = Online::GetSubsystem(GetWorld())
+    ->GetSessionInterface();
+  // Clear the delegate, since we are done with this call
+  Sessions->ClearOnStartSessionCompleteDelegate_Handle(
+      OnStartSessionCompleteDelegateHandle);
+  if (!bWasSuccessful) {
+    return;
+  }
+  // Assume that lobby map are named "Lobby"
+  UGameplayStatics::OpenLevel(GetWorld(), "Lobby", true, "listen");
+}
 ```
 
 ### Find session
 
-You can check for Epic's official implementation of `FindSessions` at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\FindSessionsCallbackProxy.cpp`
+Official implementation of `FindSessions` is at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\FindSessionsCallbackProxy.cpp`
 Result will be populated to `SessionSearch`
 ```cpp
 // Declare this somewhere in your class property, we will need this in other methods
 TSharedRef<FOnlineSessionSearch> SessionSearch;
-// Find method
-SessionSearch->bIsLanQuery = bIsLAN;
-SessionSearch->MaxSearchResults = 20;
-SessionSearch->PingBucketSize = 1000;
-auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-Sessions->FindSessions(*GetPrimaryPlayerUniqueIdRepl(), SessionSearch);
+FOnFindSessionsCompleteDelegate OnFindSessionsCompleteDelegate;
+FDelegateHandle OnFindSessionsCompleteDelegateHandle;
 ```
-
+```cpp
+// MyGameInstance.cpp/Init method
+OnFindSessionsCompleteDelegate =
+  FOnFindSessionsCompleteDelegate::CreateUObject(
+    this, &UMyGameInstance::OnFindSessionsComplete);
+```
+```cpp
+// Find method
+void UMyGameInstance::FindSessions() {
+  SessionSearch->bIsLanQuery = true;
+  SessionSearch->MaxSearchResults = 20;
+  SessionSearch->PingBucketSize = 1000;
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  OnFindSessionsCompleteDelegateHandle =
+    Sessions->AddOnFindSessionsCompleteDelegate_Handle(
+      OnFindSessionsCompleteDelegate);
+  Sessions->FindSessions(*GetPrimaryPlayerUniqueIdRepl(), SessionSearch);
+}
+```
+__We use a `TSharedRef` but not a `TSharedPtr` because shared reference guaranteed object to not be null, while shared pointer don't have that property.__
+```cpp
+void UMyGameInstance::OnFindSessionsComplete(bool bWasSuccessful) {
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  // Clear the Delegate handle, since we finished this call
+  Sessions->ClearOnFindSessionsCompleteDelegate_Handle(
+      OnFindSessionsCompleteDelegateHandle);
+  // Additionally, you might want to send the list to Blueprint
+  TArray<FString> Names;
+  for (auto result : SessionSearch->SearchResults) {
+    Names.Add(result.Session.OwningUserName);
+  }
+  // UpdateSessionList is a blueprint event, implemented by adding those in your header file
+  // MyGameInstance.h
+  // UFUNCTION(BlueprintImplementableEvent, DisplayName = UpdateSessionList)
+  // void UpdateSessionList(const TArray<FString>& Results);
+  UpdateSessionList(Names);
+}
+```
 ### Join session
 
-You can check for Epic's official implementation of `JoinSession` at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp`
+Official implementation of `JoinSession` is at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp`
 
 ```cpp
-// Suppose that we want to join the first game we found
-int SessionIndexInSearchResults = 0;
-FOnlineSessionSearchResult SearchResult = SessionSearch->SearchResults[SessionIndexInSearchResults];
-auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-Sessions->JoinSession(*GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, SearchResult);
+// MyGameInstance.h
+TSharedRef<FOnlineSessionSearch> SessionSearch;
+FOnJoinSessionCompleteDelegate OnJoinSessionCompleteDelegate;
+FDelegateHandle OnJoinSessionCompleteDelegateHandle;
 ```
-In this example, I made it simple by joining the first game in the result. I don't even bother checking if there the result are empty or not. In real project, you might probably want have an GUI for player to pick a game to join.
+```cpp
+// MyGameInstance.cpp/Init method
+OnJoinSessionCompleteDelegate = FOnJoinSessionCompleteDelegate::CreateUObject(
+  this, &UMyGameInstance::OnJoinSessionComplete);
+```
+```cpp
+bool UMyGameInstance::JoinSession() {
+  // Suppose that we want to join the first game we found
+  if(SessionSearch->SearchResults.IsEmpty()) {
+    return false;
+  }
+  FOnlineSessionSearchResult SearchResult = SessionSearch->SearchResults[0];
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  OnJoinSessionCompleteDelegateHandle =
+    Sessions->AddOnJoinSessionCompleteDelegate_Handle(
+      OnJoinSessionCompleteDelegate);
+  Sessions->JoinSession(*GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, SearchResult);
+}
+```
+```cpp
+void UMyGameInstance::OnJoinSessionComplete(
+    FName SessionName, EOnJoinSessionCompleteResult::Type Result) {
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  // Clear the Delegate again
+  Sessions->ClearOnJoinSessionCompleteDelegate_Handle(
+      OnJoinSessionCompleteDelegateHandle);
+  const auto PlayerController = GetFirstLocalPlayerController();
+  // We need a FString to use ClientTravel and we can let the
+  // SessionInterface contruct such a String for us by giving him the
+  // SessionName and an empty String. We want to do this, because Every
+  // OnlineSubsystem uses different TravelURLs
+  FString TravelURL;
+  if (!PlayerController ||
+      !Sessions->GetResolvedConnectString(SessionName, TravelURL)) {
+    return;
+  }
+  PlayerController->ClientTravel(TravelURL, ETravelType::TRAVEL_Absolute);
+}
+```
+In this example, for the sake of simplicity I let player join the first game in the result. In real project, you might probably want have an GUI for player to pick a game to join.
 
 ### Destroy session
-You can check for Epic's official implementation of `DestroySession` at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\DestroySessionCallbackProxy.cpp`
+Official implementation of `DestroySession` is at `Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\DestroySessionCallbackProxy.cpp`
 ```cpp
-auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-if (!Sessions->DestroySession(NAME_GameSession)) {
-  GAME_LOG(Display, TEXT("Something went wrong during leaving"));
+// MyGameInstance.h
+FOnDestroySessionCompleteDelegate OnDestroySessionCompleteDelegate;
+FDelegateHandle OnDestroySessionCompleteDelegateHandle;
+```
+```cpp
+// MyGameInstance.cpp/Init method
+OnDestroySessionCompleteDelegate =
+  FOnDestroySessionCompleteDelegate::CreateUObject(
+    this, &UMyGameInstance::OnDestroySessionComplete);
+```
+```cpp
+void UMyGameInstance::LeaveSession() {
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  Sessions->AddOnDestroySessionCompleteDelegate_Handle(
+      OnDestroySessionCompleteDelegate);
+  Sessions->DestroySession(NAME_GameSession);
+  // Suppose your main menu map is named "Home"
+  UGameplayStatics::OpenLevel(GetWorld(), "Home", true);
 }
-// TravelToHome();
+```
+```cpp
+void UMyGameInstance::OnDestroySessionComplete(
+    FName SessionName, bool bWasSuccessful) {
+  auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
+  // Clear the Delegate
+  Sessions->ClearOnDestroySessionCompleteDelegate_Handle(
+      OnDestroySessionCompleteDelegateHandle);
+  if (!bWasSuccessful) {
+    return;
+  }
+  // Suppose your main menu map is named "Home"
+  UGameplayStatics::OpenLevel(GetWorld(), "Home", true);
+}
+```
+### Start game
+
+Start a game is quite simple. We travel to the action map, host player call the travel function, all connected client will follow.
+```cpp
+void UMyGameInstance::StartGame() {
+  // Only lobby host can start game
+  if (!GetFirstLocalPlayerController()->HasAuthority()) {
+    return;
+  }
+  // I'm not quite sure if the "listen" option is required, will do a research later about this
+  GetWorld()->ServerTravel("/Game/Maps/LegoDungeon?listen");
+}
 ```
 
 ## Expose functionality to Blueprint
+
+C++ is awesome I know, but compiling code is a pain, no joke. Lucky for us, there have Blueprint come to the rescue. Changes in Blueprint are reflected almost instantly. 
 
 `// Give working C++ code and screen shot BP scripts`
 
@@ -99,4 +273,5 @@ if (!Sessions->DestroySession(NAME_GameSession)) {
 `// Some nice paragraph goes here`
 
 ### Learn more
-Official documentation: https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/
+Multiplayer tutorial, if you have some time to spare, definitely check [this](https://www.youtube.com/watch?v=abmzWUWxy1U&list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ) out
+[Official documentation](https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/)
