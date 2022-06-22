@@ -252,12 +252,16 @@ Result will be populated to <code>SessionSearch</code></p>
 </span><span class="code-line"><span class="token keyword">bool</span> <span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token keyword">const</span> FString HostPlayerName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bIsLAN<span class="token punctuation">,</span>
 </span><span class="code-line">    <span class="token keyword">bool</span> bIsPresence<span class="token punctuation">,</span> <span class="token keyword">const</span> int32 MaxNumPlayers<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span></code></pre>
-<p>Then in Blueprint you can do this.
-<img src="ue/networking-session/blueprint-create-session.png" alt="">
-<img src="ue/networking-session/blueprint-find-session.png" alt="">
-<img src="ue/networking-session/blueprint-join-session.png" alt="">
-<img src="ue/networking-session/blueprint-leave-session.png" alt=""></p>
+<p>Then in Blueprint you can do this.</p>
+<p><img src="ue/networking-session/blueprint-create-session.png" alt=""></p>
+<p>The same apply for</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token function">UFUNCTION</span><span class="token punctuation">(</span>BlueprintCallable<span class="token punctuation">,</span> DisplayName <span class="token operator">=</span> FindSessions<span class="token punctuation">)</span>
+</span><span class="code-line"><span class="token keyword">void</span> <span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token keyword">bool</span> bIsLAN<span class="token punctuation">,</span> <span class="token keyword">bool</span> bIsPresence<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<p>The code above allow us to do this in Blueprint</p>
+<p><img src="ue/networking-session/blueprint-find-session.png" alt=""></p>
 <h2 id="build-an-user-interface" class="heading">Build an user interface</h2>
+<p>We have all the pieces, now let's glue it together with an UI.</p>
 <h3 id="main-menu">Main menu</h3>
 <p>Create game</p>
 <p><img src="ue/networking-session/ui-create.png" alt=""></p>
