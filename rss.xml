@@ -32,6 +32,7 @@ There are 4 operations we will be implementing here</p>
 <li>List Opening Game - <code>Find Sessions</code> in UE term</li>
 <li>Join Game - <code>Join Session</code> in UE term</li>
 <li>Leave Game - <code>Destroy Session</code> in UE term</li>
+<li>Start Game - After all player are gathered, host player can decide to start the game</li>
 </ul>
 <h3 id="before-we-begin">Before we begin</h3>
 <h4 id="make-sure-you-enabled-online-subsystem-plugin">Make sure you enabled online subsystem plugin</h4>
@@ -44,59 +45,218 @@ There are 4 operations we will be implementing here</p>
 <img src="ue/networking-session/play-setting.png" alt=""></p>
 <h2 id="core-functions" class="heading">Core functions</h2>
 <h3 id="create-session">Create session</h3>
-<p>You can check for Epic's official implementation of <code>CreateSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\CreateSessionCallbackProxy.cpp</code></p>
+<p>You can check for Epic's official implementation of <code>CreateSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\CreateSessionCallbackProxy.cpp</code>
+First we need to declare some <code>Delegate</code></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.h</span>
+</span><span class="code-line">FOnCreateSessionCompleteDelegate OnCreateSessionCompleteDelegate<span class="token punctuation">;</span>
+</span><span class="code-line">FOnStartSessionCompleteDelegate OnStartSessionCompleteDelegate<span class="token punctuation">;</span>
+</span><span class="code-line">FDelegateHandle OnCreateSessionCompleteDelegateHandle<span class="token punctuation">;</span>
+</span><span class="code-line">FDelegateHandle OnStartSessionCompleteDelegateHandle<span class="token punctuation">;</span>
+</span></code></pre>
+<p>Setup delegate in your class constructor</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.cpp/Init method</span>
+</span><span class="code-line">OnCreateSessionCompleteDelegate <span class="token operator">=</span>
+</span><span class="code-line">  <span class="token class-name">FOnCreateSessionCompleteDelegate</span><span class="token double-colon punctuation">::</span><span class="token function">CreateUObject</span><span class="token punctuation">(</span>
+</span><span class="code-line">    <span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>UMyGameInstance<span class="token double-colon punctuation">::</span>OnCreateSessionComplete<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">OnStartSessionCompleteDelegate <span class="token operator">=</span>
+</span><span class="code-line">  <span class="token class-name">FOnStartSessionCompleteDelegate</span><span class="token double-colon punctuation">::</span><span class="token function">CreateUObject</span><span class="token punctuation">(</span>
+</span><span class="code-line">    <span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>UMyGameInstance<span class="token double-colon punctuation">::</span>OnStartSessionComplete<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<p>The actual create method would looks like this.</p>
 <p>We need an <code>IOnlineSession</code> object to get going, usually you can get it with <code>Online::GetSubsystem::GetSessionInterface</code>.
 In there we pass a player ID, that player would be host player, in this case I use <code>GetPrimaryPlayerUniqueIdRepl</code>.</p>
 <p>Customization is done via <code>FOnlineSessionSettings</code>.
 Note that those settings are pretty fragile, your game might not be found by others if not done correctly.
 The options below are confirmed working in <code>UE 5.0</code> for creating a LAN game.</p>
-<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line">FOnlineSessionSettings Settings<span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>NumPublicConnections <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>bShouldAdvertise <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>bAllowJoinInProgress <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>bIsLANMatch <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>bUsesPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
-</span><span class="code-line">Settings<span class="token punctuation">.</span>bAllowJoinViaPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
-</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
-</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> Settings<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">bool</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  FOnlineSessionSettings Settings<span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>NumPublicConnections <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>bShouldAdvertise <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>bAllowJoinInProgress <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>bIsLANMatch <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>bUsesPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Settings<span class="token punctuation">.</span>bAllowJoinViaPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</span><span class="code-line">    <span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  OnCreateSessionCompleteDelegateHandle <span class="token operator">=</span>
+</span><span class="code-line">    Sessions<span class="token operator">-></span><span class="token function">AddOnCreateSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnCreateSessionCompleteDelegate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">return</span> Sessions<span class="token operator">-></span><span class="token function">CreateSession</span><span class="token punctuation">(</span>
+</span><span class="code-line">    <span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> Settings<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">OnCreateSessionComplete</span><span class="token punctuation">(</span>
+</span><span class="code-line">    FName SessionName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</span><span class="code-line">    <span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Clear the SessionComplete delegate handle, since we finished this call</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">ClearOnCreateSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnCreateSessionCompleteDelegateHandle<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  <span class="token comment">// Set the StartSession delegate handle</span>
+</span><span class="code-line">  OnStartSessionCompleteDelegateHandle <span class="token operator">=</span>
+</span><span class="code-line">      Sessions<span class="token operator">-></span><span class="token function">AddOnStartSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">          OnStartSessionCompleteDelegate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">StartSession</span><span class="token punctuation">(</span>NAME_GameSession<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">OnStartSessionComplete</span><span class="token punctuation">(</span>
+</span><span class="code-line">    FName SessionName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</span><span class="code-line">    <span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Clear the delegate, since we are done with this call</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">ClearOnStartSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnStartSessionCompleteDelegateHandle<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  <span class="token comment">// Assume that lobby map are named "Lobby"</span>
+</span><span class="code-line">  <span class="token class-name">UGameplayStatics</span><span class="token double-colon punctuation">::</span><span class="token function">OpenLevel</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"Lobby"</span><span class="token punctuation">,</span> <span class="token boolean">true</span><span class="token punctuation">,</span> <span class="token string">"listen"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <h3 id="find-session">Find session</h3>
-<p>You can check for Epic's official implementation of <code>FindSessions</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\FindSessionsCallbackProxy.cpp</code>
+<p>Official implementation of <code>FindSessions</code> is at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\FindSessionsCallbackProxy.cpp</code>
 Result will be populated to <code>SessionSearch</code></p>
 <pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// Declare this somewhere in your class property, we will need this in other methods</span>
 </span><span class="code-line">TSharedRef<span class="token operator">&#x3C;</span>FOnlineSessionSearch<span class="token operator">></span> SessionSearch<span class="token punctuation">;</span>
-</span><span class="code-line"><span class="token comment">// Find method</span>
-</span><span class="code-line">SessionSearch<span class="token operator">-></span>bIsLanQuery <span class="token operator">=</span> bIsLAN<span class="token punctuation">;</span>
-</span><span class="code-line">SessionSearch<span class="token operator">-></span>MaxSearchResults <span class="token operator">=</span> <span class="token number">20</span><span class="token punctuation">;</span>
-</span><span class="code-line">SessionSearch<span class="token operator">-></span>PingBucketSize <span class="token operator">=</span> <span class="token number">1000</span><span class="token punctuation">;</span>
-</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
-</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> SessionSearch<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">FOnFindSessionsCompleteDelegate OnFindSessionsCompleteDelegate<span class="token punctuation">;</span>
+</span><span class="code-line">FDelegateHandle OnFindSessionsCompleteDelegateHandle<span class="token punctuation">;</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.cpp/Init method</span>
+</span><span class="code-line">OnFindSessionsCompleteDelegate <span class="token operator">=</span>
+</span><span class="code-line">  <span class="token class-name">FOnFindSessionsCompleteDelegate</span><span class="token double-colon punctuation">::</span><span class="token function">CreateUObject</span><span class="token punctuation">(</span>
+</span><span class="code-line">    <span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>UMyGameInstance<span class="token double-colon punctuation">::</span>OnFindSessionsComplete<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// Find method</span>
+</span><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  SessionSearch<span class="token operator">-></span>bIsLanQuery <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">  SessionSearch<span class="token operator">-></span>MaxSearchResults <span class="token operator">=</span> <span class="token number">20</span><span class="token punctuation">;</span>
+</span><span class="code-line">  SessionSearch<span class="token operator">-></span>PingBucketSize <span class="token operator">=</span> <span class="token number">1000</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  OnFindSessionsCompleteDelegateHandle <span class="token operator">=</span>
+</span><span class="code-line">    Sessions<span class="token operator">-></span><span class="token function">AddOnFindSessionsCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnFindSessionsCompleteDelegate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> SessionSearch<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<p><strong>We use a <code>TSharedRef</code> but not a <code>TSharedPtr</code> because shared reference guaranteed object to not be null, while shared pointer don't have that property.</strong></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">OnFindSessionsComplete</span><span class="token punctuation">(</span><span class="token keyword">bool</span> bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Clear the Delegate handle, since we finished this call</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">ClearOnFindSessionsCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnFindSessionsCompleteDelegateHandle<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Additionally, you might want to send the list to Blueprint</span>
+</span><span class="code-line">  TArray<span class="token operator">&#x3C;</span>FString<span class="token operator">></span> Names<span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">auto</span> result <span class="token operator">:</span> SessionSearch<span class="token operator">-></span>SearchResults<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    Names<span class="token punctuation">.</span><span class="token function">Add</span><span class="token punctuation">(</span>result<span class="token punctuation">.</span>Session<span class="token punctuation">.</span>OwningUserName<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  <span class="token comment">// UpdateSessionList is a blueprint event, implemented by adding those in your header file</span>
+</span><span class="code-line">  <span class="token comment">// MyGameInstance.h</span>
+</span><span class="code-line">  <span class="token comment">// UFUNCTION(BlueprintImplementableEvent, DisplayName = UpdateSessionList)</span>
+</span><span class="code-line">  <span class="token comment">// void UpdateSessionList(const TArray&#x3C;FString>&#x26; Results);</span>
+</span><span class="code-line">  <span class="token function">UpdateSessionList</span><span class="token punctuation">(</span>Names<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <h3 id="join-session">Join session</h3>
-<p>You can check for Epic's official implementation of <code>JoinSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp</code></p>
-<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// Suppose that we want to join the first game we found</span>
-</span><span class="code-line"><span class="token keyword">int</span> SessionIndexInSearchResults <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
-</span><span class="code-line">FOnlineSessionSearchResult SearchResult <span class="token operator">=</span> SessionSearch<span class="token operator">-></span>SearchResults<span class="token punctuation">[</span>SessionIndexInSearchResults<span class="token punctuation">]</span><span class="token punctuation">;</span>
-</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
-</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">JoinSession</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> SearchResult<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<p>Official implementation of <code>JoinSession</code> is at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp</code></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.h</span>
+</span><span class="code-line">TSharedRef<span class="token operator">&#x3C;</span>FOnlineSessionSearch<span class="token operator">></span> SessionSearch<span class="token punctuation">;</span>
+</span><span class="code-line">FOnJoinSessionCompleteDelegate OnJoinSessionCompleteDelegate<span class="token punctuation">;</span>
+</span><span class="code-line">FDelegateHandle OnJoinSessionCompleteDelegateHandle<span class="token punctuation">;</span>
 </span></code></pre>
-<p>In this example, I made it simple by joining the first game in the result. I don't even bother checking if there the result are empty or not. In real project, you might probably want have an GUI for player to pick a game to join.</p>
-<h3 id="destroy-session">Destroy session</h3>
-<p>You can check for Epic's official implementation of <code>DestroySession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\DestroySessionCallbackProxy.cpp</code></p>
-<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
-</span><span class="code-line"><span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>Sessions<span class="token operator">-></span><span class="token function">DestroySession</span><span class="token punctuation">(</span>NAME_GameSession<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
-</span><span class="code-line">  <span class="token function">GAME_LOG</span><span class="token punctuation">(</span>Display<span class="token punctuation">,</span> <span class="token function">TEXT</span><span class="token punctuation">(</span><span class="token string">"Something went wrong during leaving"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.cpp/Init method</span>
+</span><span class="code-line">OnJoinSessionCompleteDelegate <span class="token operator">=</span> <span class="token class-name">FOnJoinSessionCompleteDelegate</span><span class="token double-colon punctuation">::</span><span class="token function">CreateUObject</span><span class="token punctuation">(</span>
+</span><span class="code-line">  <span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>UMyGameInstance<span class="token double-colon punctuation">::</span>OnJoinSessionComplete<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">bool</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">JoinSession</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token comment">// Suppose that we want to join the first game we found</span>
+</span><span class="code-line">  <span class="token keyword">if</span><span class="token punctuation">(</span>SessionSearch<span class="token operator">-></span>SearchResults<span class="token punctuation">.</span><span class="token function">IsEmpty</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  FOnlineSessionSearchResult SearchResult <span class="token operator">=</span> SessionSearch<span class="token operator">-></span>SearchResults<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  OnJoinSessionCompleteDelegateHandle <span class="token operator">=</span>
+</span><span class="code-line">    Sessions<span class="token operator">-></span><span class="token function">AddOnJoinSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnJoinSessionCompleteDelegate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">JoinSession</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> SearchResult<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span><span class="code-line"><span class="token punctuation">}</span>
-</span><span class="code-line"><span class="token comment">// TravelToHome();</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">OnJoinSessionComplete</span><span class="token punctuation">(</span>
+</span><span class="code-line">    FName SessionName<span class="token punctuation">,</span> EOnJoinSessionCompleteResult<span class="token double-colon punctuation">::</span>Type Result<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Clear the Delegate again</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">ClearOnJoinSessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnJoinSessionCompleteDelegateHandle<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">const</span> <span class="token keyword">auto</span> PlayerController <span class="token operator">=</span> <span class="token function">GetFirstLocalPlayerController</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// We need a FString to use ClientTravel and we can let the</span>
+</span><span class="code-line">  <span class="token comment">// SessionInterface contruct such a String for us by giving him the</span>
+</span><span class="code-line">  <span class="token comment">// SessionName and an empty String. We want to do this, because Every</span>
+</span><span class="code-line">  <span class="token comment">// OnlineSubsystem uses different TravelURLs</span>
+</span><span class="code-line">  FString TravelURL<span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>PlayerController <span class="token operator">||</span>
+</span><span class="code-line">      <span class="token operator">!</span>Sessions<span class="token operator">-></span><span class="token function">GetResolvedConnectString</span><span class="token punctuation">(</span>SessionName<span class="token punctuation">,</span> TravelURL<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  PlayerController<span class="token operator">-></span><span class="token function">ClientTravel</span><span class="token punctuation">(</span>TravelURL<span class="token punctuation">,</span> ETravelType<span class="token double-colon punctuation">::</span>TRAVEL_Absolute<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<p>In this example, for the sake of simplicity I let player join the first game in the result. In real project, you might probably want have an GUI for player to pick a game to join.</p>
+<h3 id="destroy-session">Destroy session</h3>
+<p>Official implementation of <code>DestroySession</code> is at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\DestroySessionCallbackProxy.cpp</code></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.h</span>
+</span><span class="code-line">FOnDestroySessionCompleteDelegate OnDestroySessionCompleteDelegate<span class="token punctuation">;</span>
+</span><span class="code-line">FDelegateHandle OnDestroySessionCompleteDelegateHandle<span class="token punctuation">;</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// MyGameInstance.cpp/Init method</span>
+</span><span class="code-line">OnDestroySessionCompleteDelegate <span class="token operator">=</span>
+</span><span class="code-line">  <span class="token class-name">FOnDestroySessionCompleteDelegate</span><span class="token double-colon punctuation">::</span><span class="token function">CreateUObject</span><span class="token punctuation">(</span>
+</span><span class="code-line">    <span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>UMyGameInstance<span class="token double-colon punctuation">::</span>OnDestroySessionComplete<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">LeaveSession</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">AddOnDestroySessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnDestroySessionCompleteDelegate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">DestroySession</span><span class="token punctuation">(</span>NAME_GameSession<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Suppose your main menu map is named "Home"</span>
+</span><span class="code-line">  <span class="token class-name">UGameplayStatics</span><span class="token double-colon punctuation">::</span><span class="token function">OpenLevel</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"Home"</span><span class="token punctuation">,</span> <span class="token boolean">true</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">OnDestroySessionComplete</span><span class="token punctuation">(</span>
+</span><span class="code-line">    FName SessionName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token comment">// Clear the Delegate</span>
+</span><span class="code-line">  Sessions<span class="token operator">-></span><span class="token function">ClearOnDestroySessionCompleteDelegate_Handle</span><span class="token punctuation">(</span>
+</span><span class="code-line">      OnDestroySessionCompleteDelegateHandle<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>bWasSuccessful<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  <span class="token comment">// Suppose your main menu map is named "Home"</span>
+</span><span class="code-line">  <span class="token class-name">UGameplayStatics</span><span class="token double-colon punctuation">::</span><span class="token function">OpenLevel</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"Home"</span><span class="token punctuation">,</span> <span class="token boolean">true</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span></code></pre>
+<h3 id="start-game">Start game</h3>
+<p>Start a game is quite simple. We travel to the action map, host player call the travel function, all connected client will follow.</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">void</span> <span class="token class-name">UMyGameInstance</span><span class="token double-colon punctuation">::</span><span class="token function">StartGame</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token comment">// Only lobby host can start game</span>
+</span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">GetFirstLocalPlayerController</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">HasAuthority</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token punctuation">}</span>
+</span><span class="code-line">  <span class="token comment">// I'm not quite sure if the "listen" option is required, will do a research later about this</span>
+</span><span class="code-line">  <span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">ServerTravel</span><span class="token punctuation">(</span><span class="token string">"/Game/Maps/LegoDungeon?listen"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <h2 id="expose-functionality-to-blueprint" class="heading">Expose functionality to Blueprint</h2>
+<p>C++ is awesome I know, but compiling code is a pain, no joke. Lucky for us, there have Blueprint come to the rescue. Changes in Blueprint are reflected almost instantly.</p>
 <p><code>// Give working C++ code and screen shot BP scripts</code></p>
 <h2 id="build-an-user-interface" class="heading">Build an user interface</h2>
 <p><code>// UI Screenshot</code></p>
 <h2 id="conclusions" class="heading">Conclusions</h2>
 <p><code>// Some nice paragraph goes here</code></p>
 <h3 id="learn-more">Learn more</h3>
-<p>Official documentation: <a href="https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/" target="_blank" rel="noopener noreferer">https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/</a></p>]]>
+<p>Multiplayer tutorial, if you have some time to spare, definitely check <a href="https://www.youtube.com/watch?v=abmzWUWxy1U&#x26;list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ" target="_blank" rel="noopener noreferer">this</a> out
+<a href="https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/" target="_blank" rel="noopener noreferer">Official documentation</a></p>]]>
     </content:encoded>
   </item>
     </channel>
