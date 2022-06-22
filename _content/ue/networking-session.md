@@ -252,8 +252,7 @@ void UMyGameInstance::StartGame() {
   if (!GetFirstLocalPlayerController()->HasAuthority()) {
     return;
   }
-  // I'm not quite sure if the "listen" option is required, will do a research later about this
-  GetWorld()->ServerTravel("/Game/Maps/LegoDungeon?listen");
+  GetWorld()->ServerTravel("/Game/Maps/LegoDungeon");
 }
 ```
 ## Expose functionality to Blueprint
