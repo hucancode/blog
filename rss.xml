@@ -261,16 +261,16 @@ Result will be populated to <code>SessionSearch</code></p>
 <h2 id="build-an-user-interface" class="heading">Build an user interface</h2>
 <h3 id="main-menu">Main menu</h3>
 <p>Create game
-<img src="ue/networking-session/ui-create.png" alt="">
-Find game
+<img src="ue/networking-session/ui-create.png" alt=""></p>
+<p>Find game
 <img src="ue/networking-session/ui-find.png" alt="">
-<img src="ue/networking-session/ui-find-error.png" alt="">
-Join game
+<img src="ue/networking-session/ui-find-error.png" alt=""></p>
+<p>Join game
 <img src="ue/networking-session/ui-join.png" alt=""></p>
 <h3 id="lobby">Lobby</h3>
 <p>Lobby
-<img src="ue/networking-session/ui-lobby.png" alt="">
-Start game
+<img src="ue/networking-session/ui-lobby.png" alt=""></p>
+<p>Start game
 <img src="ue/networking-session/ui-start.png" alt=""></p>
 <p>And that's the final result when it all connected together</p>
 <p><img src="ue/networking-session/ui-all.gif" alt=""></p>
