@@ -276,24 +276,29 @@ Then in Blueprint you can do this.
 
 ### Main menu
 Create game
+
 ![](ue/networking-session/ui-create.png)
 
 Find game
+
 ![](ue/networking-session/ui-find.png)
 ![](ue/networking-session/ui-find-error.png)
 
 Join game
+
 ![](ue/networking-session/ui-join.png)
 ### Lobby
 Lobby
+
 ![](ue/networking-session/ui-lobby.png)
 
 Start game
+
 ![](ue/networking-session/ui-start.png)
 
 And that's the final result when it all connected together
 
-![](ue/networking-session/ui-all.gif)
+![](ue/networking-session/ui-all.webp)
 
 ## Conclusions
 Here are complete working C++ code, please check this
