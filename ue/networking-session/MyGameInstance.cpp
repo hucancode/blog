@@ -98,7 +98,7 @@ void UMyGameInstance::TravelToActionMap() {
   if (!GetFirstLocalPlayerController()->HasAuthority()) {
     return;
   }
-  GetWorld()->ServerTravel("/Game/Maps/LegoDungeon?listen");
+  GetWorld()->ServerTravel("/Game/Maps/LegoDungeon");
 }
 
 void UMyGameInstance::TravelToLobby() {
