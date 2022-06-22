@@ -4,7 +4,6 @@ subtitle: 'How to use Session to implement a simple game lobby mechanic'
 date: 2022-06-21 17:50:00
 category: 'ue'
 ---
-## **THIS ARTICLE IS UNDER CONSTRUCTION**
 
 ## Introduction
 ### Feature design
@@ -257,21 +256,49 @@ void UMyGameInstance::StartGame() {
   GetWorld()->ServerTravel("/Game/Maps/LegoDungeon?listen");
 }
 ```
-
 ## Expose functionality to Blueprint
 
-C++ is awesome I know, but compiling code is a pain, no joke. Lucky for us, there have Blueprint come to the rescue. Changes in Blueprint are reflected almost instantly. 
+C++ is awesome I know, but compiling code is a pain, no joke. Lucky for us, there have Blueprint come to the rescue. Changes in Blueprint are reflected almost instantly.
 
-`// Give working C++ code and screen shot BP scripts`
+First you can define which C++ method support Blueprint by adding `UFUNCTION(BlueprintCallable)`on their head. Like this
+```cpp
+UFUNCTION(BlueprintCallable)
+bool CreateSession(const FString HostPlayerName, bool bIsLAN,
+    bool bIsPresence, const int32 MaxNumPlayers);
+```
+Then in Blueprint you can do this.
+![](ue/networking-session/blueprint-create-session.png)
+![](ue/networking-session/blueprint-find-session.png)
+![](ue/networking-session/blueprint-join-session.png)
+![](ue/networking-session/blueprint-leave-session.png)
 
 ## Build an user interface
 
-`// UI Screenshot`
+### Main menu
+Create game
+![](ue/networking-session/ui-create.png)
+
+Find game
+![](ue/networking-session/ui-find.png)
+![](ue/networking-session/ui-find-error.png)
+
+Join game
+![](ue/networking-session/ui-join.png)
+### Lobby
+Lobby
+![](ue/networking-session/ui-lobby.png)
+
+Start game
+![](ue/networking-session/ui-start.png)
+
+And that's the final result when it all connected together
+
+![](ue/networking-session/ui-all.gif)
 
 ## Conclusions
-
-`// Some nice paragraph goes here`
+Here are complete working C++ code, please check this
+[MyGameInstance.cpp](ue/networking-session/MyGameInstance.cpp) and [MyGameInstance.h](ue/networking-session/MyGameInstance.h)
 
 ### Learn more
-Multiplayer tutorial, if you have some time to spare, definitely check [this](https://www.youtube.com/watch?v=abmzWUWxy1U&list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ) out
-[Official documentation](https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/)
+- Multiplayer tutorial, if you have some time to spare, definitely check [this](https://www.youtube.com/watch?v=abmzWUWxy1U&list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ) out
+- [Official documentation](https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/)

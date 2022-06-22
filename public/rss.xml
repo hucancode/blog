@@ -22,8 +22,7 @@
     <![CDATA[How to use Session to implement a simple game lobby mechanic]]>
     </description>
     <content:encoded>
-      <![CDATA[<h2 id="this-article-is-under-construction" class="heading"><strong>THIS ARTICLE IS UNDER CONSTRUCTION</strong></h2>
-<h2 id="introduction" class="heading">Introduction</h2>
+      <![CDATA[<h2 id="introduction" class="heading">Introduction</h2>
 <h3 id="feature-design">Feature design</h3>
 <p>In this article we will build a host game/join game mechanic. Player are allowed to 'host' a game. After that people joining games and start playing.
 There are 4 operations we will be implementing here</p>
@@ -248,14 +247,41 @@ Result will be populated to <code>SessionSearch</code></p>
 </span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <h2 id="expose-functionality-to-blueprint" class="heading">Expose functionality to Blueprint</h2>
-<p><code>// Give working C++ code and screen shot BP scripts</code></p>
+<p>C++ is awesome I know, but compiling code is a pain, no joke. Lucky for us, there have Blueprint come to the rescue. Changes in Blueprint are reflected almost instantly.</p>
+<p>First you can define which C++ method support Blueprint by adding <code>UFUNCTION(BlueprintCallable)</code>on their head. Like this</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token function">UFUNCTION</span><span class="token punctuation">(</span>BlueprintCallable<span class="token punctuation">)</span>
+</span><span class="code-line"><span class="token keyword">bool</span> <span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token keyword">const</span> FString HostPlayerName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bIsLAN<span class="token punctuation">,</span>
+</span><span class="code-line">    <span class="token keyword">bool</span> bIsPresence<span class="token punctuation">,</span> <span class="token keyword">const</span> int32 MaxNumPlayers<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<p>Then in Blueprint you can do this.
+<img src="ue/networking-session/blueprint-create-session.png" alt="">
+<img src="ue/networking-session/blueprint-find-session.png" alt="">
+<img src="ue/networking-session/blueprint-join-session.png" alt="">
+<img src="ue/networking-session/blueprint-leave-session.png" alt=""></p>
 <h2 id="build-an-user-interface" class="heading">Build an user interface</h2>
-<p><code>// UI Screenshot</code></p>
+<h3 id="main-menu">Main menu</h3>
+<p>Create game
+<img src="ue/networking-session/ui-create.png" alt="">
+Find game
+<img src="ue/networking-session/ui-find.png" alt="">
+<img src="ue/networking-session/ui-find-error.png" alt="">
+Join game
+<img src="ue/networking-session/ui-join.png" alt=""></p>
+<h3 id="lobby">Lobby</h3>
+<p>Lobby
+<img src="ue/networking-session/ui-lobby.png" alt="">
+Start game
+<img src="ue/networking-session/ui-start.png" alt=""></p>
+<p>And that's the final result when it all connected together</p>
+<p><img src="ue/networking-session/ui-all.gif" alt=""></p>
 <h2 id="conclusions" class="heading">Conclusions</h2>
-<p><code>// Some nice paragraph goes here</code></p>
+<p>Here are complete working C++ code, please check this
+<a href="ue/networking-session/MyGameInstance.cpp">MyGameInstance.cpp</a> and <a href="ue/networking-session/MyGameInstance.h">MyGameInstance.h</a></p>
 <h3 id="learn-more">Learn more</h3>
-<p>Multiplayer tutorial, if you have some time to spare, definitely check <a href="https://www.youtube.com/watch?v=abmzWUWxy1U&#x26;list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ" target="_blank" rel="noopener noreferer">this</a> out
-<a href="https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/" target="_blank" rel="noopener noreferer">Official documentation</a></p>]]>
+<ul>
+<li>Multiplayer tutorial, if you have some time to spare, definitely check <a href="https://www.youtube.com/watch?v=abmzWUWxy1U&#x26;list=PLZlv_N0_O1gYqSlbGQVKsRg6fpxWndZqZ" target="_blank" rel="noopener noreferer">this</a> out</li>
+<li><a href="https://docs.unrealengine.com/5.0/en-US/online-subsystem-in-unreal-engine/" target="_blank" rel="noopener noreferer">Official documentation</a></li>
+</ul>]]>
     </content:encoded>
   </item>
     </channel>
