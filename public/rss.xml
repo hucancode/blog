@@ -242,8 +242,7 @@ Result will be populated to <code>SessionSearch</code></p>
 </span><span class="code-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">GetFirstLocalPlayerController</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">HasAuthority</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
 </span><span class="code-line">    <span class="token keyword">return</span><span class="token punctuation">;</span>
 </span><span class="code-line">  <span class="token punctuation">}</span>
-</span><span class="code-line">  <span class="token comment">// I'm not quite sure if the "listen" option is required, will do a research later about this</span>
-</span><span class="code-line">  <span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">ServerTravel</span><span class="token punctuation">(</span><span class="token string">"/Game/Maps/LegoDungeon?listen"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">  <span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">ServerTravel</span><span class="token punctuation">(</span><span class="token string">"/Game/Maps/LegoDungeon"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <h2 id="expose-functionality-to-blueprint" class="heading">Expose functionality to Blueprint</h2>
@@ -253,27 +252,30 @@ Result will be populated to <code>SessionSearch</code></p>
 </span><span class="code-line"><span class="token keyword">bool</span> <span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token keyword">const</span> FString HostPlayerName<span class="token punctuation">,</span> <span class="token keyword">bool</span> bIsLAN<span class="token punctuation">,</span>
 </span><span class="code-line">    <span class="token keyword">bool</span> bIsPresence<span class="token punctuation">,</span> <span class="token keyword">const</span> int32 MaxNumPlayers<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span></code></pre>
-<p>Then in Blueprint you can do this.
-<img src="ue/networking-session/blueprint-create-session.png" alt="">
-<img src="ue/networking-session/blueprint-find-session.png" alt="">
-<img src="ue/networking-session/blueprint-join-session.png" alt="">
-<img src="ue/networking-session/blueprint-leave-session.png" alt=""></p>
+<p>Then in Blueprint you can do this.</p>
+<p><img src="ue/networking-session/blueprint-create-session.png" alt=""></p>
+<p>The same apply for</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token function">UFUNCTION</span><span class="token punctuation">(</span>BlueprintCallable<span class="token punctuation">,</span> DisplayName <span class="token operator">=</span> FindSessions<span class="token punctuation">)</span>
+</span><span class="code-line"><span class="token keyword">void</span> <span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token keyword">bool</span> bIsLAN<span class="token punctuation">,</span> <span class="token keyword">bool</span> bIsPresence<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span></code></pre>
+<p>The code above allow us to do this in Blueprint</p>
+<p><img src="ue/networking-session/blueprint-find-session.png" alt=""></p>
 <h2 id="build-an-user-interface" class="heading">Build an user interface</h2>
 <h3 id="main-menu">Main menu</h3>
-<p>Create game
-<img src="ue/networking-session/ui-create.png" alt=""></p>
-<p>Find game
-<img src="ue/networking-session/ui-find.png" alt="">
+<p>Create game</p>
+<p><img src="ue/networking-session/ui-create.png" alt=""></p>
+<p>Find game</p>
+<p><img src="ue/networking-session/ui-find.png" alt="">
 <img src="ue/networking-session/ui-find-error.png" alt=""></p>
-<p>Join game
-<img src="ue/networking-session/ui-join.png" alt=""></p>
+<p>Join game</p>
+<p><img src="ue/networking-session/ui-join.png" alt=""></p>
 <h3 id="lobby">Lobby</h3>
-<p>Lobby
-<img src="ue/networking-session/ui-lobby.png" alt=""></p>
-<p>Start game
-<img src="ue/networking-session/ui-start.png" alt=""></p>
+<p>Lobby</p>
+<p><img src="ue/networking-session/ui-lobby.png" alt=""></p>
+<p>Start game</p>
+<p><img src="ue/networking-session/ui-start.png" alt=""></p>
 <p>And that's the final result when it all connected together</p>
-<p><img src="ue/networking-session/ui-all.mp4" alt=""></p>
+<p><img src="ue/networking-session/ui-all.webp" alt=""></p>
 <h2 id="conclusions" class="heading">Conclusions</h2>
 <p>Here are complete working C++ code, please check this
 <a href="ue/networking-session/MyGameInstance.cpp">MyGameInstance.cpp</a> and <a href="ue/networking-session/MyGameInstance.h">MyGameInstance.h</a></p>

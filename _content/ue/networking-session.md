@@ -266,12 +266,22 @@ bool CreateSession(const FString HostPlayerName, bool bIsLAN,
     bool bIsPresence, const int32 MaxNumPlayers);
 ```
 Then in Blueprint you can do this.
+
 ![](ue/networking-session/blueprint-create-session.png)
+
+The same apply for 
+```cpp
+UFUNCTION(BlueprintCallable, DisplayName = FindSessions)
+void FindSessions(bool bIsLAN, bool bIsPresence);
+```
+The code above allow us to do this in Blueprint
+
 ![](ue/networking-session/blueprint-find-session.png)
-![](ue/networking-session/blueprint-join-session.png)
-![](ue/networking-session/blueprint-leave-session.png)
+
 
 ## Build an user interface
+
+We have all the pieces, now let's glue it together with an UI.
 
 ### Main menu
 Create game
