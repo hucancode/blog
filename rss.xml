@@ -22,54 +22,72 @@
     <![CDATA[How to use Session to implement a simple game lobby mechanic]]>
     </description>
     <content:encoded>
-      <![CDATA[<h2 id="introduction" class="heading">Introduction</h2>
-<p><code>// Cool intro goes here</code></p>
-<h3 id="make-sure-you-enabled-online-subsystem-plugin">Make sure you enabled online subsystem plugin</h3>
-<p><code>// Super detail about how to enable online subsystem</code></p>
-<h2 id="feature-design" class="heading">Feature design</h2>
-<p><code>// Explain why we need CreateSession, FindSessions, JoinSessions, DestroySession</code></p>
+      <![CDATA[<h2 id="this-article-is-under-construction" class="heading"><strong>THIS ARTICLE IS UNDER CONSTRUCTION</strong></h2>
+<h2 id="introduction" class="heading">Introduction</h2>
+<h3 id="feature-design">Feature design</h3>
+<p>In this article we will build a host game/join game mechanic. Player are allowed to 'host' a game. After that people joining games and start playing.
+There are 4 operations we will be implementing here</p>
+<ul>
+<li>Host Game - <code>Create Session</code> in UE term</li>
+<li>List Opening Game - <code>Find Sessions</code> in UE term</li>
+<li>Join Game - <code>Join Session</code> in UE term</li>
+<li>Leave Game - <code>Destroy Session</code> in UE term</li>
+</ul>
+<h3 id="before-we-begin">Before we begin</h3>
+<h4 id="make-sure-you-enabled-online-subsystem-plugin">Make sure you enabled online subsystem plugin</h4>
+<p>Open <code>Plugin Settings</code>, and enable <code>Online Base</code>, <code>Online Subsystem</code>, <code>Online Subsystem Utils</code>. Then enable Steam, or something else according to your case. In this case, I just want to connect over LAN so I went with <code>Online Subsystem NULL</code></p>
+<p>Your setting would looks like this
+<img src="ue/networking-session/plugin-setting.png" alt=""></p>
+<h4 id="set-pie-player-count-to-at-least-2">Set PIE player count to at least 2</h4>
+<p>We need at least 2 players to test this kind of behavior. By default it's 1, so adjust number of players accordingly. Their <code>Net Mode</code> have to be <code>Standalone</code></p>
+<p>Your setting would looks like this
+<img src="ue/networking-session/play-setting.png" alt=""></p>
 <h2 id="core-functions" class="heading">Core functions</h2>
-<h3 id="create-session">Create Session</h3>
-<p>You can check for Epic's official implementation of <code>CreateSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\CreateSessionCallbackProxy.cpp</code>
-We need an <code>IOnlineSession</code> object to get going, usually you can get it with <code>Online::GetSubsystem::GetSessionInterface</code>. In there we pass a player ID, that player would be host player, in this case I use <code>GetPrimaryPlayerUniqueIdRepl</code>. With <code>FOnlineSessionSettings</code>, you can customize the session to your liking.</p>
-<pre><code class="language-c# code-highlight"><span class="code-line">FOnlineSessionSettings Settings;
-</span><span class="code-line">Settings.NumPublicConnections = 10;
-</span><span class="code-line">Settings.bShouldAdvertise = true;
-</span><span class="code-line">Settings.bAllowJoinInProgress = true;
-</span><span class="code-line">Settings.bIsLANMatch = true;
-</span><span class="code-line">Settings.bUsesPresence = true;
-</span><span class="code-line">Settings.bAllowJoinViaPresence = true;
-</span><span class="code-line">auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-</span><span class="code-line">Sessions->CreateSession(*GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, Settings);
+<h3 id="create-session">Create session</h3>
+<p>You can check for Epic's official implementation of <code>CreateSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\CreateSessionCallbackProxy.cpp</code></p>
+<p>We need an <code>IOnlineSession</code> object to get going, usually you can get it with <code>Online::GetSubsystem::GetSessionInterface</code>.
+In there we pass a player ID, that player would be host player, in this case I use <code>GetPrimaryPlayerUniqueIdRepl</code>.</p>
+<p>Customization is done via <code>FOnlineSessionSettings</code>.
+Note that those settings are pretty fragile, your game might not be found by others if not done correctly.
+The options below are confirmed working in <code>UE 5.0</code> for creating a LAN game.</p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line">FOnlineSessionSettings Settings<span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>NumPublicConnections <span class="token operator">=</span> <span class="token number">10</span><span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>bShouldAdvertise <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>bAllowJoinInProgress <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>bIsLANMatch <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>bUsesPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line">Settings<span class="token punctuation">.</span>bAllowJoinViaPresence <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">CreateSession</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> Settings<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span></code></pre>
-<h3 id="find-session">Find Session</h3>
+<h3 id="find-session">Find session</h3>
 <p>You can check for Epic's official implementation of <code>FindSessions</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\FindSessionsCallbackProxy.cpp</code>
-Result will be added to <code>SessionSearch</code></p>
-<pre><code class="language-c++ code-highlight"><span class="code-line">// Declare this somewhere in your class property
-</span><span class="code-line">TSharedRef&#x3C;FOnlineSessionSearch> SessionSearch;
-</span><span class="code-line">// Find method
-</span><span class="code-line">SessionSearch->bIsLanQuery = bIsLAN;
-</span><span class="code-line">SessionSearch->MaxSearchResults = 20;
-</span><span class="code-line">SessionSearch->PingBucketSize = 1000;
-</span><span class="code-line">auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-</span><span class="code-line">Sessions->FindSessions(*GetPrimaryPlayerUniqueIdRepl(), SessionSearch);
+Result will be populated to <code>SessionSearch</code></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// Declare this somewhere in your class property, we will need this in other methods</span>
+</span><span class="code-line">TSharedRef<span class="token operator">&#x3C;</span>FOnlineSessionSearch<span class="token operator">></span> SessionSearch<span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token comment">// Find method</span>
+</span><span class="code-line">SessionSearch<span class="token operator">-></span>bIsLanQuery <span class="token operator">=</span> bIsLAN<span class="token punctuation">;</span>
+</span><span class="code-line">SessionSearch<span class="token operator">-></span>MaxSearchResults <span class="token operator">=</span> <span class="token number">20</span><span class="token punctuation">;</span>
+</span><span class="code-line">SessionSearch<span class="token operator">-></span>PingBucketSize <span class="token operator">=</span> <span class="token number">1000</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">FindSessions</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> SessionSearch<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span></code></pre>
-<h3 id="join-session">Join Session</h3>
+<h3 id="join-session">Join session</h3>
 <p>You can check for Epic's official implementation of <code>JoinSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp</code></p>
-<pre><code class="language-c++ code-highlight"><span class="code-line">// Suppose we want to join the first game we found
-</span><span class="code-line">int SessionIndexInSearchResults = 0;
-</span><span class="code-line">FOnlineSessionSearchResult SearchResult = SessionSearch->SearchResults[SessionIndexInSearchResults];
-</span><span class="code-line">auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-</span><span class="code-line">Sessions->JoinSession(*GetPrimaryPlayerUniqueIdRepl(), NAME_GameSession, SearchResult);
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token comment">// Suppose that we want to join the first game we found</span>
+</span><span class="code-line"><span class="token keyword">int</span> SessionIndexInSearchResults <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+</span><span class="code-line">FOnlineSessionSearchResult SearchResult <span class="token operator">=</span> SessionSearch<span class="token operator">-></span>SearchResults<span class="token punctuation">[</span>SessionIndexInSearchResults<span class="token punctuation">]</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line">Sessions<span class="token operator">-></span><span class="token function">JoinSession</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token function">GetPrimaryPlayerUniqueIdRepl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> NAME_GameSession<span class="token punctuation">,</span> SearchResult<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </span></code></pre>
-<h3 id="destroy-session">Destroy Session</h3>
-<p>You can check for Epic's official implementation of <code>JoinSession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\JoinSessionCallbackProxy.cpp</code></p>
-<pre><code class="language-c++ code-highlight"><span class="code-line">auto Sessions = Online::GetSubsystem(GetWorld())->GetSessionInterface();
-</span><span class="code-line">if (!Sessions->DestroySession(NAME_GameSession)) {
-</span><span class="code-line">  GAME_LOG(Display, TEXT("Something went wrong during leaving"));
-</span><span class="code-line">}
-</span><span class="code-line">// TravelToHome();
-</span><span class="code-line">
+<p>In this example, I made it simple by joining the first game in the result. I don't even bother checking if there the result are empty or not. In real project, you might probably want have an GUI for player to pick a game to join.</p>
+<h3 id="destroy-session">Destroy session</h3>
+<p>You can check for Epic's official implementation of <code>DestroySession</code> at <code>Engine\Plugins\Online\OnlineSubsystemUtils\Source\OnlineSubsystemUtils\Private\DestroySessionCallbackProxy.cpp</code></p>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">auto</span> Sessions <span class="token operator">=</span> <span class="token class-name">Online</span><span class="token double-colon punctuation">::</span><span class="token function">GetSubsystem</span><span class="token punctuation">(</span><span class="token function">GetWorld</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">GetSessionInterface</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>Sessions<span class="token operator">-></span><span class="token function">DestroySession</span><span class="token punctuation">(</span>NAME_GameSession<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+</span><span class="code-line">  <span class="token function">GAME_LOG</span><span class="token punctuation">(</span>Display<span class="token punctuation">,</span> <span class="token function">TEXT</span><span class="token punctuation">(</span><span class="token string">"Something went wrong during leaving"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</span><span class="code-line"><span class="token punctuation">}</span>
+</span><span class="code-line"><span class="token comment">// TravelToHome();</span>
 </span></code></pre>
 <h2 id="expose-functionality-to-blueprint" class="heading">Expose functionality to Blueprint</h2>
 <p><code>// Give working C++ code and screen shot BP scripts</code></p>
