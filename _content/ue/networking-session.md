@@ -2,7 +2,7 @@
 title: 'Unreal Engine Networking - Session'
 subtitle: 'How to use Session to implement a simple game lobby mechanic'
 date: 2022-06-21 17:50:00
-category: 'ue'
+category: 'Unreal'
 ---
 
 ## Introduction
@@ -281,7 +281,7 @@ The code above allow us to do this in Blueprint
 
 ## Build an user interface
 
-We have all the pieces, now let's glue it together with an UI.
+We have all the pieces, now let's glue them all together with an UI.
 
 ### Main menu
 Create game
