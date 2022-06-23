@@ -34,6 +34,7 @@ We will apply the idea of `Dynamic Programming`.
 Easily we see **the answer is `g(x)`**. 
 We can calculate some initial value without much difficulty.
 
+---
 If x == 1
 ```cpp
 f(1) = 0
@@ -66,6 +67,7 @@ That's conclude our solution.
 
 Readable code
 ```cpp
+#define INF 1000000007
 long countArray(int n, int k, int x) {
     long f[100001];
     long g[100001];
@@ -85,6 +87,7 @@ long countArray(int n, int k, int x) {
 ```
 Optimized code
 ```cpp
+#define INF 1000000007
 long countArray(int n, int k, int x) {
     long f, g, tmp;
     if(x == 1) {
