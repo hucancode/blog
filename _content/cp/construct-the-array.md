@@ -72,15 +72,11 @@ long countArray(int n, int k, int x) {
     if(x == 1) {
         g[1] = 1;
         f[1] = 0;
-        g[2] = 0;
-        f[2] = k-1;
     } else {
         g[1] = 0;
         f[1] = 1;
-        g[2] = 1;
-        f[2] = k-2;
     }
-    for(int i=3;i<=n;i++) {
+    for(int i=2;i<=n;i++) {
         f[i] = ((k-2)*f[i-1] + (k-1)*g[i-1])%INF;
         g[i] = f[i-1];
     }
@@ -92,13 +88,13 @@ Optimized code
 long countArray(int n, int k, int x) {
     long f, g, tmp;
     if(x == 1) {
-        g = 0;
-        f = k - 1;
-    } else {
         g = 1;
-        f = k - 2;
+        f = 0;
+    } else {
+        g = 0;
+        f = 1;
     }
-    for(int i=3;i<n;i++) {
+    for(int i=2;i<n;i++) {
         tmp = ((k-2)*f + (k-1)*g)%INF;
         g = f;
         f = tmp;
