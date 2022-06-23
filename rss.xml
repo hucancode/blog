@@ -47,6 +47,7 @@
 </ul>
 <p>Easily we see <strong>the answer is <code>g(x)</code></strong>.
 We can calculate some initial value without much difficulty.</p>
+<hr>
 <p>If x == 1</p>
 <pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token function">f</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token operator">=</span> <span class="token number">0</span>
 </span><span class="code-line"><span class="token function">f</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span> <span class="token operator">=</span> k <span class="token operator">-</span> <span class="token number">1</span>
@@ -71,7 +72,8 @@ Combine them we have</p>
 <p>That's conclude our solution.</p>
 <h2 id="code" class="heading">Code</h2>
 <p>Readable code</p>
-<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">long</span> <span class="token function">countArray</span><span class="token punctuation">(</span><span class="token keyword">int</span> n<span class="token punctuation">,</span> <span class="token keyword">int</span> k<span class="token punctuation">,</span> <span class="token keyword">int</span> x<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">INF</span> <span class="token expression"><span class="token number">1000000007</span></span></span>
+</span><span class="code-line"><span class="token keyword">long</span> <span class="token function">countArray</span><span class="token punctuation">(</span><span class="token keyword">int</span> n<span class="token punctuation">,</span> <span class="token keyword">int</span> k<span class="token punctuation">,</span> <span class="token keyword">int</span> x<span class="token punctuation">)</span> <span class="token punctuation">{</span>
 </span><span class="code-line">    <span class="token keyword">long</span> f<span class="token punctuation">[</span><span class="token number">100001</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
 </span><span class="code-line">    <span class="token keyword">long</span> g<span class="token punctuation">[</span><span class="token number">100001</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
 </span><span class="code-line">    <span class="token keyword">if</span><span class="token punctuation">(</span>x <span class="token operator">==</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
@@ -89,7 +91,8 @@ Combine them we have</p>
 </span><span class="code-line"><span class="token punctuation">}</span>
 </span></code></pre>
 <p>Optimized code</p>
-<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token keyword">long</span> <span class="token function">countArray</span><span class="token punctuation">(</span><span class="token keyword">int</span> n<span class="token punctuation">,</span> <span class="token keyword">int</span> k<span class="token punctuation">,</span> <span class="token keyword">int</span> x<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+<pre class="language-cpp"><code class="language-cpp code-highlight"><span class="code-line"><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">INF</span> <span class="token expression"><span class="token number">1000000007</span></span></span>
+</span><span class="code-line"><span class="token keyword">long</span> <span class="token function">countArray</span><span class="token punctuation">(</span><span class="token keyword">int</span> n<span class="token punctuation">,</span> <span class="token keyword">int</span> k<span class="token punctuation">,</span> <span class="token keyword">int</span> x<span class="token punctuation">)</span> <span class="token punctuation">{</span>
 </span><span class="code-line">    <span class="token keyword">long</span> f<span class="token punctuation">,</span> g<span class="token punctuation">,</span> tmp<span class="token punctuation">;</span>
 </span><span class="code-line">    <span class="token keyword">if</span><span class="token punctuation">(</span>x <span class="token operator">==</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
 </span><span class="code-line">        g <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
