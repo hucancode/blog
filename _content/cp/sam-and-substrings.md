@@ -16,7 +16,7 @@ n = '42'
 ```
 Here `n` is a string that has `3` integer substrings: `4` ,`2`, and `42`. Their sum is `48`, and `48 mod (10^9+7) = 48`.
 
-Constraints
+## Constraints
 
 ```cpp
 1 <= sizeof(n) <= 2*10^5
